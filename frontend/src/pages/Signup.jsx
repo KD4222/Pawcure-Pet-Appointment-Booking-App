@@ -1,14 +1,17 @@
-import React, { useState } from 'react'
+import  { useState } from 'react'
 import signupImg from "../assets/images/signup.gif";
 import avatar from "../assets/images/doctor-img01.png";
-import { Link } from 'react-router-dom';
-
-
+import { Link, useNavigate} from 'react-router-dom';
+import uploadImageToCloudinay from '../utils/uploadCloudinary';
+import { BASE_URL } from '../config';
+import {toast} from 'react-toastify'
+import HashLoader from 'react-spinners/HashLoader'
 
 const Signup = () => {
 
     const [selectedFile, setSelectedFile] = useState(null);
-    const [previewURL, setPreviewURL] = useState(null);
+    const [previewURL, setPreviewURL] = useState("");
+    const [loading,setLoading]=useState(false);
 
     const [formData, setFormData] = useState({
         name:'',
@@ -19,6 +22,9 @@ const Signup = () => {
         role:'patient'
       });
     
+      const navigate=useNavigate()
+
+
       const handleInputChange = e=> {
         setFormData({...formData, [e.target.name]:e.target.value});
       };
@@ -29,13 +35,41 @@ const Signup = () => {
         const file = event.target.files[0];
 
         // later we will use cloudinary to upload images 
-
-        // console.log(file);
+        const data= await uploadImageToCloudinay(file);
+        setPreviewURL(data.url);
+        setSelectedFile(data.url)
+        setFormData({...formData,photo:data.url});
 
       };
 
       const submitHandler = async event => {
+        console.log(formData);
         event.preventDefault()
+
+        setLoading(true)
+
+        try {
+            const res=await fetch(`${BASE_URL}/auth/register`,{
+                method:'post',
+                headers:{
+                    'Content-Type':'application/json',
+                },
+                body:JSON.stringify(formData)
+            })
+            const {message}=await res.json()
+            if(!res.ok){
+                throw new Error(message)
+            }
+            setLoading(false)
+            console.log("message");
+            toast.success(message)
+            console.log("beforenavigation");
+            navigate('/login')
+
+        } catch (err) {
+            toast.error(err.message)
+            setLoading(false)
+        }
       };
 
   return (
@@ -130,9 +164,9 @@ const Signup = () => {
                         </div>
 
                     <div className="mb-5 flex items-center gap-3">
-                        <figure className='w-[60px] h-[60px] rounded-full border-2 border-solid border-primaryColor flex items-center justify-center'>
-                            <img src={avatar} alt="" className='w-full rounded-full ' />
-                        </figure>
+                        {selectedFile && <figure className='w-[60px] h-[60px] rounded-full border-2 border-solid border-primaryColor flex items-center justify-center'>
+                            <img src={previewURL} alt="" className='w-full rounded-full ' />
+                        </figure>}
 
                     <div className='relative w-[130px] h-[50px] '>
                         <input 
@@ -153,8 +187,8 @@ const Signup = () => {
                    </div>
 
                    <div className="mt-7">
-                    <button type="submit" className="w-full bg-primaryColor text-white text-[18px] leading-[30px] rounded-lg px-4 py-3">
-                        Sign Up
+                    <button disabled={loading&&true} type="submit" className="w-full bg-primaryColor text-white text-[18px] leading-[30px] rounded-lg px-4 py-3">
+                        { loading ? <HashLoader size={35} color="#ffffff"/>: 'Sign Up'}
                     </button>
                 </div>
 
